@@ -19,9 +19,9 @@ Copy the desktop entry so radio-tui shows up in Omarchy's app launcher:
     mkdir -p ~/.local/share/applications
     cp packaging/radio-tui.desktop ~/.local/share/applications/
 
-The entry launches `alacritty -e radio` by default — edit the `Exec=` line
+The entry launches `ghostty -e radio` by default — edit the `Exec=` line
 in `packaging/radio-tui.desktop` if you use a different terminal (foot,
-kitty, ghostty, etc.).
+kitty, alacritty, etc.).
 
 ## Usage
 

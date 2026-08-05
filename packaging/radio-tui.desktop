@@ -2,7 +2,7 @@
 Type=Application
 Name=Radio (Kosovo & Saudi Arabia)
 Comment=Terminal radio player for Kosovo and Saudi Arabia stations
-Exec=alacritty -e radio
+Exec=ghostty -e radio
 Terminal=false
 Icon=multimedia-player
 Categories=AudioVideo;Audio;
