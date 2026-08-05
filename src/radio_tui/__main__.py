@@ -3,13 +3,19 @@ from __future__ import annotations
 
 import sys
 
-__version__ = "0.1.0"
+from radio_tui.app import RadioApp
+from radio_tui.mpv_controller import MPVController
 
 
 def main() -> int:
     """CLI entry point. Returns a process exit code."""
-    print(f"radio-tui {__version__}")
-    return 0
+    if not MPVController.is_installed():
+        print("mpv is not installed. Install it with: pacman -S mpv", file=sys.stderr)
+        return 1
+
+    app = RadioApp()
+    app.run()
+    return app.return_code or 0
 
 
 if __name__ == "__main__":
