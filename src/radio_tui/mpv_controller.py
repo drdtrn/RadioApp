@@ -12,6 +12,14 @@ from radio_tui.mpv_ipc import MPVIPCClient
 
 CONNECT_TIMEOUT_SECONDS = 2.0
 CONNECT_RETRY_INTERVAL = 0.05
+IPC_TIMEOUT_SECONDS = 2.0
+"""Timeout for individual IPC round trips once connected.
+
+Without this, a hung/unresponsive mpv process would block a socket.recv()
+indefinitely (see MPVIPCClient._read_message), and since get_now_playing()/
+had_playback_error() are polled every 2s from the main UI thread
+(RadioApp._poll_now_playing), a hang here freezes the entire TUI forever.
+"""
 
 
 class MPVController:
@@ -23,6 +31,7 @@ class MPVController:
         self._socket_dir: str | None = None
         self._socket_path: Path | None = None
         self._client: MPVIPCClient | None = None
+        self._ipc_unresponsive = False
 
     @staticmethod
     def is_installed(mpv_binary: str = "mpv") -> bool:
@@ -61,6 +70,7 @@ class MPVController:
             try:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.connect(str(self._socket_path))
+                sock.settimeout(IPC_TIMEOUT_SECONDS)
                 return sock
             except OSError as error:
                 last_error = error
@@ -81,13 +91,25 @@ class MPVController:
         self._client.send_command(["set_property", "volume", volume])
 
     def get_now_playing(self) -> str | None:
-        response = self._client.send_command(["get_property", "media-title"])
+        try:
+            response = self._client.send_command(["get_property", "media-title"])
+        except OSError:
+            # Includes socket.timeout: mpv accepted the connection but stopped
+            # responding. Surface it the same way as any other IPC failure
+            # (None) instead of letting the poller block forever, and record
+            # it so had_playback_error() can flag the station as unavailable.
+            self._ipc_unresponsive = True
+            return None
         if response.get("error") != "success":
             return None
         return response.get("data")
 
     def had_playback_error(self) -> bool:
-        """Return True and clear the flag if an end-file error occurred since the last check."""
+        """Return True and clear the flag if an end-file error occurred since the
+        last check, or if mpv's IPC connection has gone unresponsive (timed out)."""
+        if self._ipc_unresponsive:
+            self._ipc_unresponsive = False
+            return True
         found = any(
             event.get("event") == "end-file" and event.get("reason") == "error"
             for event in self._client.events
@@ -100,7 +122,11 @@ class MPVController:
         if self._client is not None:
             try:
                 self._client.send_command(["quit"])
-            except ConnectionError:
+            except OSError:
+                # Includes ConnectionError (mpv already gone) and
+                # socket.timeout (mpv wedged and never replied). Either way,
+                # don't let a graceful "quit" IPC command block or crash
+                # shutdown — fall through to terminating the process directly.
                 pass
             self._client.close()
         if self._process is not None:
