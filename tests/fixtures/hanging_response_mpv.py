@@ -30,7 +30,10 @@ def main() -> None:
     server.bind(socket_path)
     server.listen(1)
     conn, _ = server.accept()
-    del conn  # Accept the connection, then go silent forever — never reply.
+    # Keep the connection open and never reply, simulating a wedged mpv.
+    # (Deliberately do NOT `del conn` / let it go out of scope here — that
+    # would close the fd immediately, making the client see a prompt
+    # ConnectionResetError instead of a genuine multi-second recv() timeout.)
     time.sleep(30)
 
 

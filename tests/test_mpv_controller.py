@@ -93,6 +93,43 @@ def test_had_playback_error_reports_true_after_unresponsive_mpv():
         _force_kill(controller)
 
 
+def test_play_does_not_raise_when_mpv_is_unresponsive():
+    """play() must not crash the caller (a Textual action handler, in
+    practice) when mpv is wedged -- the timeout should be swallowed and
+    surfaced via had_playback_error() on the next poll instead."""
+    controller = MPVController(mpv_binary=str(HANGING_RESPONSE_MPV_PATH))
+    controller.start()
+    try:
+        controller.play("http://example.invalid/stream")  # must not raise
+        assert controller.had_playback_error() is True
+    finally:
+        _force_kill(controller)
+
+
+def test_toggle_pause_returns_false_when_mpv_is_unresponsive():
+    """toggle_pause() must degrade gracefully (no crash) against a wedged
+    mpv, reporting a safe default rather than propagating socket.timeout
+    out of RadioApp.action_toggle_pause()."""
+    controller = MPVController(mpv_binary=str(HANGING_RESPONSE_MPV_PATH))
+    controller.start()
+    try:
+        assert controller.toggle_pause() is False  # must not raise
+    finally:
+        _force_kill(controller)
+
+
+def test_set_volume_does_not_raise_when_mpv_is_unresponsive():
+    """set_volume() must silently no-op (best-effort, like quit()'s
+    swallow-and-continue) against a wedged mpv rather than crash the
+    caller."""
+    controller = MPVController(mpv_binary=str(HANGING_RESPONSE_MPV_PATH))
+    controller.start()
+    try:
+        controller.set_volume(50)  # must not raise
+    finally:
+        _force_kill(controller)
+
+
 def test_quit_does_not_raise_when_mpv_is_unresponsive():
     """quit() sends a 'quit' IPC command and awaits a reply. Against an mpv
     that has wedged (accepted the connection, never responds), that call now

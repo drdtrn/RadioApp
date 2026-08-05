@@ -78,17 +78,41 @@ class MPVController:
         raise ConnectionError(f"Could not connect to mpv IPC socket: {last_error}")
 
     def play(self, url: str) -> None:
-        self._client.send_command(["loadfile", url, "replace"])
+        try:
+            self._client.send_command(["loadfile", url, "replace"])
+        except OSError:
+            # mpv is unresponsive (e.g. wedged). Don't crash the caller — the
+            # next _poll_now_playing() cycle will pick this up via
+            # had_playback_error()/get_now_playing()'s own IPC-failure
+            # handling once it next talks to mpv.
+            self._ipc_unresponsive = True
 
     def toggle_pause(self) -> bool:
-        current = self._client.send_command(["get_property", "pause"])["data"]
+        try:
+            current = self._client.send_command(["get_property", "pause"])["data"]
+        except OSError:
+            # mpv is unresponsive — nothing to toggle; report "not paused" as
+            # a safe default rather than crash the action handler.
+            self._ipc_unresponsive = True
+            return False
         new_state = not current
-        self._client.send_command(["set_property", "pause", new_state])
+        try:
+            self._client.send_command(["set_property", "pause", new_state])
+        except OSError:
+            # The read succeeded but the write didn't land — report the last
+            # known (unchanged) state instead of claiming a toggle that
+            # didn't actually happen.
+            self._ipc_unresponsive = True
+            return current
         return new_state
 
     def set_volume(self, volume: int) -> None:
         volume = max(0, min(100, volume))
-        self._client.send_command(["set_property", "volume", volume])
+        try:
+            self._client.send_command(["set_property", "volume", volume])
+        except OSError:
+            # Best-effort, same spirit as quit()'s swallow-and-continue.
+            self._ipc_unresponsive = True
 
     def get_now_playing(self) -> str | None:
         try:
