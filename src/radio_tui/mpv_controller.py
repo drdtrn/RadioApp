@@ -34,17 +34,24 @@ class MPVController:
         # permissions, avoiding the predictable-path race of a bare mktemp().
         self._socket_dir = tempfile.mkdtemp(prefix="radio-tui-mpv-")
         self._socket_path = Path(self._socket_dir) / "mpv.sock"
-        self._process = subprocess.Popen(
-            [
-                self._mpv_binary,
-                "--no-video",
-                "--idle=yes",
-                f"--input-ipc-server={self._socket_path}",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        sock = self._connect_with_retry()
+        try:
+            self._process = subprocess.Popen(
+                [
+                    self._mpv_binary,
+                    "--no-video",
+                    "--idle=yes",
+                    f"--input-ipc-server={self._socket_path}",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            sock = self._connect_with_retry()
+        except Exception:
+            if self._process is not None:
+                self._process.terminate()
+                self._process.wait(timeout=2)
+            shutil.rmtree(self._socket_dir, ignore_errors=True)
+            raise
         self._client = MPVIPCClient(sock)
 
     def _connect_with_retry(self) -> socket.socket:
