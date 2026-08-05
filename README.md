@@ -27,15 +27,19 @@ kitty, ghostty, etc.).
 
     radio
 
-| Key              | Action                       |
-|------------------|-------------------------------|
-| Tab / Shift+Tab  | Switch Kosovo / Saudi Arabia |
-| ↑ / ↓            | Move station selection        |
-| Enter            | Play highlighted station      |
-| Space            | Pause / resume                |
-| + / - or ← / →   | Volume up / down               |
-| r                | Force-refresh station list    |
-| q                | Quit                           |
+| Key                    | Action                       |
+|------------------------|-------------------------------|
+| Ctrl+Left / Ctrl+Right | Switch Kosovo / Saudi Arabia |
+| ↑ / ↓                  | Move station selection        |
+| Enter                  | Play highlighted station      |
+| Space                  | Pause / resume                |
+| + / - or ← / →         | Volume up / down               |
+| r                      | Force-refresh station list    |
+| q                      | Quit                           |
+
+Plain Tab / Shift+Tab do not switch country tabs — they follow Textual's
+normal behavior of cycling keyboard focus between widgets (search box,
+station table, tab bar).
 
 Note: playback shortcuts (Space, +/-, arrows) only work when the station table is focused — click or Tab out of the search box first.
 

@@ -1,10 +1,10 @@
-from textual.widgets import DataTable, Static
+from textual.widgets import DataTable, Static, TabbedContent
 
 from radio_tui import config, radio_browser
 from radio_tui.app import RadioApp
 from radio_tui.models import Station
 from radio_tui.radio_browser import StationsResult
-from tests.doubles import FakeMPVController
+from tests.doubles import FailingStartMPVController, FakeMPVController
 
 
 def _fake_stations():
@@ -110,6 +110,65 @@ async def test_plus_and_minus_adjust_volume(monkeypatch, tmp_path):
         await pilot.pause()
 
         assert fake_mpv.volume == 75
+
+
+async def test_last_tab_from_config_is_active_on_mount(monkeypatch, tmp_path):
+    # _make_app always points config_path at tmp_path / "config.toml" — write
+    # the config there first so RadioApp picks it up on construction/mount.
+    config.save_config(tmp_path / "config.toml", config.Config(last_tab="SA"))
+    app = _make_app(tmp_path, monkeypatch)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        tabbed = app.query_one(TabbedContent)
+        assert tabbed.active == "tab-SA"
+
+
+async def test_ctrl_right_and_ctrl_left_switch_tab_and_update_config(monkeypatch, tmp_path):
+    app = _make_app(tmp_path, monkeypatch)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        tabbed = app.query_one(TabbedContent)
+        assert tabbed.active == "tab-XK"
+        assert app._config.last_tab == "XK"
+
+        await pilot.press("ctrl+right")
+        await pilot.pause()
+
+        assert tabbed.active == "tab-SA"
+        assert app._config.last_tab == "SA"
+
+        await pilot.press("ctrl+left")
+        await pilot.pause()
+
+        assert tabbed.active == "tab-XK"
+        assert app._config.last_tab == "XK"
+
+
+async def test_tab_switch_keybinding_does_not_affect_volume(monkeypatch, tmp_path):
+    fake_mpv = FakeMPVController()
+    app = _make_app(tmp_path, monkeypatch, mpv=fake_mpv)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        starting_volume = fake_mpv.volume
+
+        await pilot.press("ctrl+right")
+        await pilot.pause()
+        await pilot.press("ctrl+left")
+        await pilot.pause()
+
+        assert fake_mpv.volume == starting_volume
+
+
+async def test_mpv_start_failure_exits_cleanly_instead_of_crashing(monkeypatch, tmp_path):
+    app = _make_app(tmp_path, monkeypatch, mpv=FailingStartMPVController())
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+    assert app.return_code == 1
 
 
 async def test_quit_saves_config_and_stops_mpv(monkeypatch, tmp_path):

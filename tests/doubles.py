@@ -36,3 +36,10 @@ class FakeMPVController:
 
     def quit(self) -> None:
         self.quit_called = True
+
+
+class FailingStartMPVController(FakeMPVController):
+    """FakeMPVController whose start() fails like a missing/broken mpv binary would."""
+
+    def start(self) -> None:
+        raise FileNotFoundError("mpv binary not found")

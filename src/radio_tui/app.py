@@ -30,6 +30,8 @@ class RadioApp(App):
         ("right", "volume_up", "Vol+"),
         ("minus", "volume_down", "Vol-"),
         ("left", "volume_down", "Vol-"),
+        ("ctrl+right", "next_tab", "Next tab"),
+        ("ctrl+left", "prev_tab", "Prev tab"),
         ("q", "quit", "Quit"),
     ]
 
@@ -60,12 +62,21 @@ class RadioApp(App):
     def on_mount(self) -> None:
         self._config = config_module.load_config(self._config_path)
         self.mpv = self._mpv_override or MPVController(mpv_binary=self._config.mpv_binary)
-        self.mpv.start()
+        try:
+            self.mpv.start()
+        except OSError as error:
+            self.exit(return_code=1, message=str(error))
+            return
 
         for code, _ in COUNTRIES:
             table = self.query_one(f"#table-{code}", DataTable)
             table.add_columns("Name", "Tags", "Bitrate")
             table.cursor_type = "row"
+
+        valid_codes = [code for code, _ in COUNTRIES]
+        if self._config.last_tab in valid_codes:
+            self.query_one(TabbedContent).active = f"tab-{self._config.last_tab}"
+
         self.load_stations()
         self.set_interval(2.0, self._poll_now_playing)
 
@@ -113,6 +124,10 @@ class RadioApp(App):
                 if query in station.name.lower() or any(query in tag.lower() for tag in station.tags)
             ]
         self._render_table(code, stations)
+
+    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        code = event.pane.id.removeprefix("tab-")
+        self._config.last_tab = code
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         code = event.data_table.id.removeprefix("table-")
@@ -163,6 +178,20 @@ class RadioApp(App):
         self._config.volume = max(0, self._config.volume - VOLUME_STEP)
         self.mpv.set_volume(self._config.volume)
         self._update_now_playing(title=None)
+
+    def _switch_tab(self) -> None:
+        """Toggle the active TabbedContent pane between the two country tabs."""
+        codes = [code for code, _ in COUNTRIES]
+        tabbed_content = self.query_one(TabbedContent)
+        current = tabbed_content.active.removeprefix("tab-")
+        next_index = (codes.index(current) + 1) % len(codes)
+        tabbed_content.active = f"tab-{codes[next_index]}"
+
+    def action_next_tab(self) -> None:
+        self._switch_tab()
+
+    def action_prev_tab(self) -> None:
+        self._switch_tab()
 
     def action_quit(self) -> None:
         config_module.save_config(self._config_path, self._config)
