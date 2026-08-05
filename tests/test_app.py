@@ -1,7 +1,10 @@
-from radio_tui import radio_browser
+from textual.widgets import DataTable, Static
+
+from radio_tui import config, radio_browser
 from radio_tui.app import RadioApp
 from radio_tui.models import Station
 from radio_tui.radio_browser import StationsResult
+from tests.doubles import FakeMPVController
 
 
 def _fake_stations():
@@ -17,7 +20,11 @@ async def test_stations_load_into_correct_country_tables(monkeypatch, tmp_path):
         "get_stations",
         lambda *a, **k: StationsResult(_fake_stations(), from_cache=False, cache_timestamp=None),
     )
-    app = RadioApp(cache_path=tmp_path / "stations.json")
+    app = RadioApp(
+        cache_path=tmp_path / "stations.json",
+        config_path=tmp_path / "config.toml",
+        mpv=FakeMPVController(),
+    )
 
     async with app.run_test() as pilot:
         await pilot.pause()
@@ -33,7 +40,11 @@ async def test_search_filters_table_rows(monkeypatch, tmp_path):
         "get_stations",
         lambda *a, **k: StationsResult(_fake_stations(), from_cache=False, cache_timestamp=None),
     )
-    app = RadioApp(cache_path=tmp_path / "stations.json")
+    app = RadioApp(
+        cache_path=tmp_path / "stations.json",
+        config_path=tmp_path / "config.toml",
+        mpv=FakeMPVController(),
+    )
 
     async with app.run_test() as pilot:
         await pilot.pause()
@@ -42,3 +53,80 @@ async def test_search_filters_table_rows(monkeypatch, tmp_path):
         await pilot.pause()
         xk_table = app.query_one("#table-XK")
         assert xk_table.row_count == 0
+
+
+def _make_app(tmp_path, monkeypatch, mpv=None):
+    monkeypatch.setattr(
+        radio_browser,
+        "get_stations",
+        lambda *a, **k: StationsResult(_fake_stations(), from_cache=False, cache_timestamp=None),
+    )
+    return RadioApp(
+        cache_path=tmp_path / "stations.json",
+        config_path=tmp_path / "config.toml",
+        mpv=mpv or FakeMPVController(),
+    )
+
+
+async def test_enter_on_row_plays_station_via_mpv(monkeypatch, tmp_path):
+    fake_mpv = FakeMPVController()
+    app = _make_app(tmp_path, monkeypatch, mpv=fake_mpv)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        table = app.query_one("#table-XK", DataTable)
+        table.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert fake_mpv.played_urls == ["http://x"]
+        now_playing = app.query_one("#now-playing", Static)
+        assert "Radio Kosova e Lire" in str(now_playing.content)
+
+
+async def test_space_toggles_pause(monkeypatch, tmp_path):
+    fake_mpv = FakeMPVController()
+    app = _make_app(tmp_path, monkeypatch, mpv=fake_mpv)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        table = app.query_one("#table-XK", DataTable)
+        table.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("space")
+        await pilot.pause()
+
+        assert fake_mpv.paused is True
+
+
+async def test_plus_and_minus_adjust_volume(monkeypatch, tmp_path):
+    fake_mpv = FakeMPVController()
+    app = _make_app(tmp_path, monkeypatch, mpv=fake_mpv)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("plus")
+        await pilot.pause()
+
+        assert fake_mpv.volume == 75
+
+
+async def test_quit_saves_config_and_stops_mpv(monkeypatch, tmp_path):
+    fake_mpv = FakeMPVController()
+    config_path = tmp_path / "config.toml"
+    monkeypatch.setattr(
+        radio_browser,
+        "get_stations",
+        lambda *a, **k: StationsResult(_fake_stations(), from_cache=False, cache_timestamp=None),
+    )
+    app = RadioApp(cache_path=tmp_path / "stations.json", config_path=config_path, mpv=fake_mpv)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("q")
+        await pilot.pause()
+
+    assert fake_mpv.quit_called is True
+    saved = config.load_config(config_path)
+    assert saved.volume == fake_mpv.volume
