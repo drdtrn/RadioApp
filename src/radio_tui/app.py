@@ -180,12 +180,28 @@ class RadioApp(App):
         self._update_now_playing(title=None)
 
     def _switch_tab(self) -> None:
-        """Toggle the active TabbedContent pane between the two country tabs."""
+        """Toggle the active TabbedContent pane between the two country tabs.
+
+        Setting `TabbedContent.active` alone isn't enough: if a widget inside
+        the tab being hidden currently has focus (e.g. the station table —
+        the normal place to be when reaching for this binding), Textual's
+        focus system reacts to that widget becoming unfocusable by shifting
+        focus to the next focusable widget in DOM order. That focus move
+        fires `TabPane.Focused`, which `TabbedContent._on_tab_pane_focused`
+        handles by snapping `active` right back to whichever tab now holds
+        focus — silently undoing the switch. Explicitly focusing the new
+        tab's table *after* Textual's own focus machinery has settled (via
+        `call_after_refresh`) wins that race instead of fighting it inline.
+        """
         codes = [code for code, _ in COUNTRIES]
         tabbed_content = self.query_one(TabbedContent)
         current = tabbed_content.active.removeprefix("tab-")
-        next_index = (codes.index(current) + 1) % len(codes)
-        tabbed_content.active = f"tab-{codes[next_index]}"
+        next_code = codes[(codes.index(current) + 1) % len(codes)]
+        tabbed_content.active = f"tab-{next_code}"
+        self.call_after_refresh(self._focus_table, next_code)
+
+    def _focus_table(self, code: str) -> None:
+        self.query_one(f"#table-{code}", DataTable).focus()
 
     def action_next_tab(self) -> None:
         self._switch_tab()

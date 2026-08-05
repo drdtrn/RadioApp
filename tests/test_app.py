@@ -146,6 +146,43 @@ async def test_ctrl_right_and_ctrl_left_switch_tab_and_update_config(monkeypatch
         assert app._config.last_tab == "XK"
 
 
+async def test_ctrl_right_switches_tab_when_station_table_is_focused(monkeypatch, tmp_path):
+    """Regression test: clicking into a tab's DataTable (the state the README
+    tells users to be in for playback shortcuts) and then pressing the
+    tab-switch binding must actually switch tabs. Previously, hiding the
+    pane containing the focused table made Textual auto-refocus a widget in
+    the *other* still-visible pane, which fired TabPane.Focused and made
+    TabbedContent._on_tab_pane_focused snap `active` right back — so the
+    switch silently no-opped and focus got yanked into an unrelated search
+    box."""
+    app = _make_app(tmp_path, monkeypatch)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.click("#table-XK")
+        await pilot.pause()
+        assert app.focused is not None
+        assert app.focused.id == "table-XK"
+
+        tabbed = app.query_one(TabbedContent)
+        await pilot.press("ctrl+right")
+        await pilot.pause()
+
+        assert tabbed.active == "tab-SA"
+        assert app._config.last_tab == "SA"
+        # Focus should land on the newly active tab's table, not get
+        # silently dropped onto some other widget.
+        assert app.focused is not None
+        assert app.focused.id == "table-SA"
+
+        await pilot.press("ctrl+left")
+        await pilot.pause()
+
+        assert tabbed.active == "tab-XK"
+        assert app.focused is not None
+        assert app.focused.id == "table-XK"
+
+
 async def test_tab_switch_keybinding_does_not_affect_volume(monkeypatch, tmp_path):
     fake_mpv = FakeMPVController()
     app = _make_app(tmp_path, monkeypatch, mpv=fake_mpv)
