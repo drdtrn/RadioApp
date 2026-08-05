@@ -43,8 +43,8 @@ class RadioApp(App):
             table.cursor_type = "row"
         self.load_stations()
 
-    @work(exclusive=True)
-    async def load_stations(self, force_refresh: bool = False) -> None:
+    @work(exclusive=True, thread=True)
+    def load_stations(self, force_refresh: bool = False) -> None:
         try:
             result = radio_browser.get_stations(
                 self._cache_path,
@@ -52,12 +52,15 @@ class RadioApp(App):
                 force_refresh=force_refresh,
             )
         except NoStationsAvailable as error:
-            self.exit(return_code=1, message=str(error))
+            self.call_from_thread(self.exit, return_code=1, message=str(error))
             return
 
+        self.call_from_thread(self._apply_stations, result.stations)
+
+    def _apply_stations(self, stations: list[Station]) -> None:
         for code, _ in COUNTRIES:
             self._stations_by_country[code] = [
-                station for station in result.stations if station.countrycode == code
+                station for station in stations if station.countrycode == code
             ]
         self._refresh_tables()
 
