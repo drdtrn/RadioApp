@@ -17,6 +17,16 @@ class Station:
     bitrate: int = 0
     available: bool = True
 
+    def matches(self, query: str) -> bool:
+        """True if `query` appears (case-insensitively) in the name or any tag.
+
+        A blank query matches every station.
+        """
+        query = query.strip().lower()
+        if not query:
+            return True
+        return query in self.name.lower() or any(query in tag.lower() for tag in self.tags)
+
     @classmethod
     def from_api_dict(cls, data: dict) -> "Station":
         """Build a Station from one entry of the Radio Browser API response."""

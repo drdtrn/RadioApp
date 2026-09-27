@@ -12,6 +12,10 @@ from radio_tui.mpv_ipc import MPVIPCClient
 
 CONNECT_TIMEOUT_SECONDS = 2.0
 CONNECT_RETRY_INTERVAL = 0.05
+MPV_INSTALL_HINT = (
+    "Install it with your package manager, e.g. "
+    "sudo apt install mpv / sudo dnf install mpv / sudo pacman -S mpv"
+)
 IPC_TIMEOUT_SECONDS = 2.0
 """Timeout for individual IPC round trips once connected.
 

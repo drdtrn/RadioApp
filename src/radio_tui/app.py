@@ -10,13 +10,11 @@ from textual.widgets import DataTable, Footer, Header, Input, Static, TabbedCont
 
 from radio_tui import config as config_module
 from radio_tui import radio_browser
+from radio_tui.config import CACHE_PATH, CONFIG_PATH, COUNTRIES
 from radio_tui.models import Station
 from radio_tui.mpv_controller import MPVController
 from radio_tui.radio_browser import NoStationsAvailable
 
-CACHE_PATH = Path.home() / ".cache" / "radio-tui" / "stations.json"
-CONFIG_PATH = Path.home() / ".config" / "radio-tui" / "config.toml"
-COUNTRIES = [("XK", "Kosovo"), ("SA", "Saudi Arabia")]
 VOLUME_STEP = 5
 
 
@@ -115,14 +113,9 @@ class RadioApp(App):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         code = event.input.id.removeprefix("search-")
-        query = event.value.strip().lower()
-        stations = self._stations_by_country[code]
-        if query:
-            stations = [
-                station
-                for station in stations
-                if query in station.name.lower() or any(query in tag.lower() for tag in station.tags)
-            ]
+        stations = [
+            station for station in self._stations_by_country[code] if station.matches(event.value)
+        ]
         self._render_table(code, stations)
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:

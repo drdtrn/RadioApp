@@ -5,7 +5,7 @@ import sys
 
 from radio_tui import config as config_module
 from radio_tui.app import CONFIG_PATH, RadioApp
-from radio_tui.mpv_controller import MPVController
+from radio_tui.mpv_controller import MPV_INSTALL_HINT, MPVController
 
 
 def main() -> int:
@@ -13,8 +13,7 @@ def main() -> int:
     config = config_module.load_config(CONFIG_PATH)
     if not MPVController.is_installed(config.mpv_binary):
         print(
-            f"mpv is not installed (looked for '{config.mpv_binary}'). "
-            "Install it with: pacman -S mpv",
+            f"mpv is not installed (looked for '{config.mpv_binary}'). {MPV_INSTALL_HINT}",
             file=sys.stderr,
         )
         return 1

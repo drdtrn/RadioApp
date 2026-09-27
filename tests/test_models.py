@@ -44,3 +44,12 @@ def test_cache_round_trip_preserves_fields():
     rebuilt = Station.from_cache_dict(station.to_cache_dict())
 
     assert rebuilt == station
+
+
+def test_matches_searches_name_and_tags_case_insensitively():
+    station = Station(name="Radio Kosova e Lire", tags=["News", "talk"])
+
+    assert station.matches("kosova")
+    assert station.matches("  NEWS ")
+    assert station.matches("")
+    assert not station.matches("jazz")

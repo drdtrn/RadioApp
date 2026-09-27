@@ -5,6 +5,11 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+# App-wide settings shared by the TUI (radio) and GUI (radio-gui) front ends.
+CACHE_PATH = Path.home() / ".cache" / "radio-tui" / "stations.json"
+CONFIG_PATH = Path.home() / ".config" / "radio-tui" / "config.toml"
+COUNTRIES = [("XK", "Kosovo"), ("SA", "Saudi Arabia")]
+
 DEFAULT_VOLUME = 70
 DEFAULT_TAB = "XK"
 DEFAULT_MPV_BINARY = "mpv"
