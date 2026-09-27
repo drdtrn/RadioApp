@@ -1,18 +1,20 @@
 [project]
 name = "radio-tui"
 version = "0.1.0"
-description = "Terminal radio player for Kosovo and Saudi Arabia stations"
+description = "Radio player (terminal and desktop) for Kosovo and Saudi Arabia stations"
 requires-python = ">=3.11"
 dependencies = [
     "textual>=0.58",
     "requests>=2.31",
+    "PySide6-Essentials>=6.7",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-qt>=4.4"]
 
 [project.scripts]
 radio = "radio_tui.__main__:main"
+radio-gui = "radio_tui.gui:main"
 
 [build-system]
 requires = ["hatchling"]

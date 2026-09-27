@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Radio
+GenericName=Internet Radio
+Comment=Radio player for Kosovo and Saudi Arabia stations
+Exec=radio-gui
+Terminal=false
+Icon=multimedia-player
+Categories=AudioVideo;Audio;Player;
