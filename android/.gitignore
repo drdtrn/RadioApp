@@ -1,0 +1,13 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+# Release signing secrets; see README "Building the APK"
+keystore.properties
+*.jks
+*.keystore

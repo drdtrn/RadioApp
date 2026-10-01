@@ -1,13 +1,16 @@
 # radio-tui
 
-A radio player for Kosovo and Saudi Arabia stations, with two front ends
-sharing the same station list, settings and playback engine:
+A radio player for Kosovo and Saudi Arabia stations, with two desktop front
+ends sharing the same station list, settings and playback engine:
 
 - `radio-gui` — a desktop window, built on [Qt (PySide6)](https://doc.qt.io/qtforpython-6/)
 - `radio` — a terminal UI, built on [Textual](https://textual.textualize.io/)
 
 Playback runs through [mpv](https://mpv.io/); station data comes from the
 [Radio Browser](https://www.radio-browser.info/) API.
+
+There's also an [Android app](#android-app) in `android/`: the same stations
+and features, as a native Kotlin app.
 
 ## Install (any Linux distro)
 
@@ -87,6 +90,59 @@ Both apps keep volume and the last-used tab in
 - **`Could not load the Qt platform plugin "xcb"`** — Qt needs one extra
   system library on X11 sessions: `sudo apt install libxcb-cursor0`
   (Ubuntu / Debian) or `sudo dnf install xcb-util-cursor` (Fedora).
+
+## Android app
+
+`android/` holds a native Android version (Kotlin, Jetpack Compose, Media3
+ExoPlayer). The Python code can't run there — mpv and its IPC socket, Qt and
+Textual don't exist on Android — so the station model, Radio Browser client,
+cache and search are ported to Kotlin with the same behaviour. It adds what a
+phone needs: playback keeps going with the screen off or the app closed,
+with controls in the notification, on the lock screen and on Bluetooth /
+headset buttons; it pauses for calls and when headphones are unplugged.
+
+Same as the desktop app: the Kosovo / Saudi Arabia tabs (swipe or tap), search
+by name or tag, the song title when a station sends one, ⚠ on streams that
+fail, a 24-hour station cache with offline fallback, and the volume, sort
+order and last tab are remembered. Pull down (or tap ⟳) to refresh the list.
+Resuming after a pause rejoins the live broadcast.
+
+### Install on a phone
+
+Copy the APK (`radio-release.apk`, see below) to the phone and open it. Android asks once to
+allow installing apps from that source (Files, Chrome, …). Android 8.0+.
+
+Installing a newer build over an older one only works if both were signed
+with the same key (see below); otherwise uninstall the old one first.
+
+### Build the APK
+
+Needs a JDK 17+ and the Android SDK (platform 37, build-tools 36). Android
+Studio installs both; with only the
+[command-line tools](https://developer.android.com/studio#command-line-tools-only)
+unpacked into `~/Android/Sdk/cmdline-tools/latest`:
+
+    export ANDROID_HOME=~/Android/Sdk
+    $ANDROID_HOME/cmdline-tools/latest/bin/android --sdk=$ANDROID_HOME \
+        sdk install platforms/android-37.0 build-tools/36.0.0 platform-tools
+    echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+    cd android
+    ./gradlew testDebugUnitTest      # unit tests (station model, API client + cache, search, titles)
+    ./gradlew assembleRelease        # → app/build/outputs/apk/release/radio-release.apk
+
+Release builds are signed with the key named in `android/keystore.properties`
+(not in git):
+
+    storeFile=/home/you/.android/radio-release.jks
+    storePassword=…
+    keyAlias=radio
+    keyPassword=…
+
+Create a key once with `keytool -genkeypair -keystore ~/.android/radio-release.jks
+-storetype PKCS12 -alias radio -keyalg RSA -keysize 4096 -validity 36500`, and
+back up the `.jks` — every future update must be signed with it. Without
+`keystore.properties` the release build falls back to the per-machine debug key.
 
 ## Development
 

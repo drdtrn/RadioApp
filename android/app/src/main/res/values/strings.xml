@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radio</string>
+    <string name="refresh">Refresh station list</string>
+    <string name="sort">Sort</string>
+    <string name="sort_by_name">Sort by name</string>
+    <string name="sort_by_bitrate">Sort by bitrate</string>
+    <string name="search_hint">Search by name or tag…</string>
+    <string name="clear_search">Clear search</string>
+    <string name="loading_stations">Loading stations…</string>
+    <string name="retry">Retry</string>
+    <string name="no_matches">No stations match “%1$s”</string>
+    <string name="no_stations">No stations</string>
+    <string name="load_failed">Couldn\'t load stations: %1$s</string>
+    <plurals name="station_count">
+        <item quantity="one">%d station</item>
+        <item quantity="other">%d stations</item>
+    </plurals>
+    <string name="status_line">%1$s · updated %2$s</string>
+    <string name="bitrate_kbps">%1$d kbps</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="idle_hint">Tap a station to start listening</string>
+    <string name="stream_failed">This stream failed to play — try another station</string>
+    <string name="stream_failed_short">This stream failed to play</string>
+    <string name="connecting">Connecting…</string>
+    <string name="paused">Paused</string>
+    <string name="live">Live</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="volume">Volume</string>
+    <string name="volume_percent">%1$d%%</string>
+</resources>
