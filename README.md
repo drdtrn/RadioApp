@@ -107,6 +107,10 @@ fail, a 24-hour station cache with offline fallback, and the volume, sort
 order and last tab are remembered. Pull down (or tap ⟳) to refresh the list.
 Resuming after a pause rejoins the live broadcast.
 
+Back and Home leave the radio playing in the background. To stop it and
+close the app, tap ⏻ — in the app, in the notification or on the lock
+screen — or swipe the app away from the recent apps.
+
 ### Install on a phone
 
 Copy the APK (`radio-release.apk`, see below) to the phone and open it. Android asks once to

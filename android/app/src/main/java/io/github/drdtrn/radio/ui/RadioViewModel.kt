@@ -2,6 +2,7 @@ package io.github.drdtrn.radio.ui
 
 import android.app.Application
 import android.content.ComponentName
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -164,6 +165,11 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
             Player.STATE_BUFFERING, Player.STATE_READY -> Unit // just paused
         }
         player.play()
+    }
+
+    /** Stop the radio and end the playback service (the screen closes itself). */
+    fun close() {
+        controller?.sendCustomCommand(PlaybackService.CLOSE_COMMAND, Bundle.EMPTY)
     }
 
     fun setVolume(volume: Int) {

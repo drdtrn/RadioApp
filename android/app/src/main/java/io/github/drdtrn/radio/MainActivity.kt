@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
         volumeControlStream = AudioManager.STREAM_MUSIC
         setContent {
             RadioTheme {
-                RadioScreen()
+                // Back and Home leave the radio playing; Close quits for real,
+                // removing the app from the recent apps too.
+                RadioScreen(onClose = ::finishAndRemoveTask)
             }
         }
     }

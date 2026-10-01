@@ -82,7 +82,7 @@ private val WIDE_LAYOUT_MIN_WIDTH = 600.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RadioScreen(viewModel: RadioViewModel = viewModel()) {
+fun RadioScreen(onClose: () -> Unit, viewModel: RadioViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(initialPage = viewModel.initialTab) { COUNTRIES.size }
     val scope = rememberCoroutineScope()
@@ -114,6 +114,12 @@ fun RadioScreen(viewModel: RadioViewModel = viewModel()) {
                     SortMenu(state.sortOrder, viewModel::setSortOrder)
                     IconButton(onClick = viewModel::refresh, enabled = !state.isLoading) {
                         Icon(painterResource(R.drawable.ic_refresh), stringResource(R.string.refresh))
+                    }
+                    IconButton(onClick = {
+                        viewModel.close()
+                        onClose()
+                    }) {
+                        Icon(painterResource(R.drawable.ic_power), stringResource(R.string.close_app_description))
                     }
                 },
             )

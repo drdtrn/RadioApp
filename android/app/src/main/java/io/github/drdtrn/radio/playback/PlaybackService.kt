@@ -4,6 +4,7 @@ package io.github.drdtrn.radio.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -13,9 +14,14 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
+import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import io.github.drdtrn.radio.MainActivity
 import io.github.drdtrn.radio.R
 
@@ -23,6 +29,10 @@ import io.github.drdtrn.radio.R
  * Owns the player and keeps it running while the app is in the background,
  * with the usual media notification and lock-screen controls. The UI drives
  * it through a MediaController (see RadioViewModel).
+ *
+ * Leaving the app (Back, Home) keeps the radio playing; closing it (the Close
+ * button in the app or the notification, or swiping it out of the recent
+ * apps) stops playback and the service.
  */
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
@@ -53,9 +63,16 @@ class PlaybackService : MediaSessionService() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setCustomIconResId(R.drawable.ic_power)
+            .setDisplayName(getString(R.string.close_app))
+            .setSessionCommand(CLOSE_COMMAND)
+            .setSlots(CommandButton.SLOT_FORWARD) // right after play/pause
+            .build()
         session = MediaSession.Builder(this, LiveRadioPlayer(exoPlayer))
             .setSessionActivity(openApp)
-            .setCallback(SessionCallback)
+            .setCallback(SessionCallback())
+            .setMediaButtonPreferences(listOf(closeButton))
             .build()
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider.Builder(this).build().apply {
@@ -65,6 +82,18 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+
+    /** Swiping the app out of the recent apps closes it, even while playing. */
+    override fun onTaskRemoved(rootIntent: Intent?) = close()
+
+    /** Stop the radio and remove the notification, then let the service end. */
+    private fun close() {
+        session?.player?.run {
+            stop()
+            clearMediaItems() // an empty player has no notification, even if the UI is still bound
+        }
+        pauseAllPlayersAndStopSelf()
+    }
 
     override fun onDestroy() {
         session?.run {
@@ -110,21 +139,25 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** Live radio has no previous/next track, so keep those buttons off the notification. */
-    private object SessionCallback : MediaSession.Callback {
+    private inner class SessionCallback : MediaSession.Callback {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
-            // Same defaults the builder picks: untrusted apps only get read-only commands.
-            val defaults = if (controller.isTrusted) {
-                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+            // Start from the defaults the builder picks: untrusted apps only get
+            // read-only commands, and can't close the app.
+            val (sessionCommands, playerCommands) = if (controller.isTrusted) {
+                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(CLOSE_COMMAND).build() to
+                    MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
             } else {
-                MediaSession.ConnectionResult.DEFAULT_UNTRUSTED_PLAYER_COMMANDS
+                MediaSession.ConnectionResult.DEFAULT_UNTRUSTED_SESSION_COMMANDS to
+                    MediaSession.ConnectionResult.DEFAULT_UNTRUSTED_PLAYER_COMMANDS
             }
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(sessionCommands)
                 .setAvailablePlayerCommands(
-                    defaults.buildUpon()
+                    // Live radio has no previous/next track, so keep those buttons off the notification.
+                    playerCommands.buildUpon()
                         .removeAll(
                             Player.COMMAND_SEEK_TO_PREVIOUS,
                             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
@@ -135,10 +168,26 @@ class PlaybackService : MediaSessionService() {
                 )
                 .build()
         }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction != CLOSE_COMMAND.customAction) {
+                return super.onCustomCommand(session, controller, customCommand, args)
+            }
+            close()
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
     }
 
-    private companion object {
-        const val RECONNECT_MIN_INTERVAL_MS = 10_000L
+    companion object {
+        /** Sent by the app's Close button and the notification's: stop playback and quit. */
+        val CLOSE_COMMAND = SessionCommand("io.github.drdtrn.radio.CLOSE", Bundle.EMPTY)
+
+        private const val RECONNECT_MIN_INTERVAL_MS = 10_000L
     }
 }
 

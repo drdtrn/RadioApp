@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Radio</string>
     <string name="refresh">Refresh station list</string>
+    <string name="close_app">Close</string>
+    <string name="close_app_description">Stop the radio and close the app</string>
     <string name="sort">Sort</string>
     <string name="sort_by_name">Sort by name</string>
     <string name="sort_by_bitrate">Sort by bitrate</string>
